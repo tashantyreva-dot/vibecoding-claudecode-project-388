@@ -1,0 +1,13 @@
+{
+  "name": "price-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Трекер цен на б/у авто (MINI Cooper Countryman) с обходом источников через Playwright.",
+  "type": "commonjs",
+  "scripts": {
+    "extract": "node scripts/extract.js"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}
