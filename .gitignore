@@ -2,3 +2,7 @@ node_modules/
 npm-debug.log*
 # история прогонов трекера пишется отдельно (tracker-data), локальный мусор — мимо репо
 *.log
+logs/
+# секреты доставки (токен бота, chat_id) — только локально, не в git
+.env
+scripts/.env

@@ -23,11 +23,20 @@ description: >-
 | Часть | Кто исполняет | Ответственность |
 |-------|---------------|-----------------|
 | **этот SKILL.md** | Claude (headless) | чтение/запись GitHub через MCP, оркестрация |
-| [`scripts/run-tracker.js`](../../../scripts/run-tracker.js) | Node | обход источников, сборка прогона, diff, Telegram |
+| [`scripts/run-tracker.js`](../../../scripts/run-tracker.js) | Node | обход источников, сборка прогона, diff, вызов доставки |
+| [`scripts/send.py`](../../../scripts/send.py) | Python (stdlib) | отправка готового текста в Telegram |
 
 `run-tracker.js` работает с **локальными файлами**: Claude выкачивает конфиг и прошлый
 прогон через GitHub MCP во временные файлы, запускает скрипт, затем забирает
 получившийся прогон и кладёт его в GitHub через MCP.
+
+Доставка вынесена в отдельный `send.py` (только стандартная библиотека, `urllib`):
+`run-tracker.js` не дублирует HTTP-логику, а вызывает `python send.py "<текст сводки>"`.
+`chat_id` берётся из `notify.yaml` и передаётся в `send.py` через переменную окружения
+`TELEGRAM_CHAT_ID`; токен — `TELEGRAM_BOT_TOKEN` — наследуется из окружения.
+`send.py` можно тестировать отдельно: `python send.py "тест"` → в ответ печатает
+`Отправлено.` и шлёт сообщение (нужны `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`
+в окружении или в `.env` рядом со скриптом).
 
 ## Файлы в `tracker-data`
 

@@ -30,6 +30,7 @@
  *     --out      <куда-записать-новый-прогон.json> \
  *     [--date YYYY-MM-DD]      (по умолчанию — сегодня)
  *     [--extract scripts/extract.js]
+ *     [--send scripts/send.py]  (скрипт доставки в Telegram)
  *     [--dry-run]              (посчитать и собрать сообщение, но НЕ слать Telegram)
  *
  * В stdout печатается JSON-сводка (diff + результат Telegram + путь к прогону) —
@@ -59,6 +60,7 @@ function parseArgs(argv) {
       case '--out': args.out = argv[++i]; break;
       case '--date': args.date = argv[++i]; break;
       case '--extract': args.extract = argv[++i]; break;
+      case '--send': args.send = argv[++i]; break;
       case '--dry-run': args.dryRun = true; break;
       default:
         die(1, `Неизвестный аргумент: ${a}`);
@@ -351,19 +353,43 @@ function formatDateRu(iso) {
 }
 
 // ───────────────────────────── Telegram ─────────────────────────────
+// Доставка вынесена в отдельный Python-скрипт send.py (только stdlib): tracker
+// не дублирует HTTP-логику, а вызывает `python send.py <текст>`. chat_id берём
+// из notify.yaml и передаём через окружение (TELEGRAM_CHAT_ID); токен —
+// TELEGRAM_BOT_TOKEN — наследуется из окружения процесса.
 
-async function sendTelegram(token, chatId, text) {
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: false }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) {
-    const desc = data && data.description ? data.description : `HTTP ${res.status}`;
-    throw new Error(`Telegram API отклонил отправку: ${desc}`);
+/** Находит доступный интерпретатор Python. Возвращает имя или null. */
+function findPython() {
+  for (const cand of ['python', 'py', 'python3']) {
+    const r = spawnSync(cand, ['--version'], { encoding: 'utf8', timeout: 15000 });
+    if (!r.error && r.status === 0 && /Python\s+3\./.test((r.stdout || '') + (r.stderr || ''))) {
+      return cand;
+    }
   }
-  return data.result;
+  return null;
+}
+
+/**
+ * Отправляет текст через send.py. Бросает Error с понятным текстом, если Python
+ * не найден или send.py завершился ненулевым кодом (нет токена/сети/Telegram отклонил).
+ */
+function sendViaSendPy(sendScript, chatId, text) {
+  const py = findPython();
+  if (!py) {
+    throw new Error('не найден интерпретатор Python (python/py/python3) для запуска send.py');
+  }
+  const r = spawnSync(py, [sendScript, text], {
+    encoding: 'utf8',
+    timeout: 60000,
+    env: { ...process.env, TELEGRAM_CHAT_ID: String(chatId) },
+  });
+  if (r.error) {
+    throw new Error(`не удалось запустить send.py: ${r.error.message}`);
+  }
+  if (r.status !== 0) {
+    throw new Error((r.stderr || r.stdout || `send.py завершился с кодом ${r.status}`).trim());
+  }
+  return (r.stdout || '').trim();
 }
 
 // ────────────────────────────── main ──────────────────────────────
@@ -467,10 +493,13 @@ async function main() {
     }
     if (notify.chat_id == null) die(1, 'в notify.yaml нет telegram.chat_id');
 
+    const sendScript = args.send || path.join(__dirname, 'send.py');
+    if (!fs.existsSync(sendScript)) die(1, `не найден send.py: ${sendScript}`);
+
     try {
-      await sendTelegram(token, notify.chat_id, message);
+      const out = sendViaSendPy(sendScript, notify.chat_id, message);
       telegram.sent = true;
-      log(`Telegram: отправлено в chat_id ${notify.chat_id}.`);
+      log(`Telegram (send.py): ${out || 'отправлено'} → chat_id ${notify.chat_id}.`);
     } catch (e) {
       process.stdout.write(JSON.stringify({ date, runPath: args.out, run, diff, telegram }, null, 2) + '\n');
       die(2, e.message);
