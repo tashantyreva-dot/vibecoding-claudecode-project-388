@@ -3,6 +3,11 @@ npm-debug.log*
 # история прогонов трекера пишется отдельно (tracker-data), локальный мусор — мимо репо
 *.log
 logs/
+# временные локальные копии, которые github-sync.js/headless-агент скачивает из tracker-data
+products.yaml
+notify.yaml
+prev-run.json
+new-run.json
 # секреты доставки (токен бота, chat_id) — только локально, не в git
 .env
 scripts/.env
