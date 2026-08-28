@@ -1,0 +1,32 @@
+# Цель поиска: подобрать MINI Cooper Countryman (б/у) дешевле бюджета для покупки.
+# Здесь товар = URL листинга/поиска по модели на конкретном сайте (не карточка одного авто),
+# т.к. extract-price сам собирает ВСЕ подходящие объявления со страницы и фильтрует по цене.
+
+search:
+  brand: "MINI"
+  model: "Cooper Countryman"
+  max_price: 1200000   # ₽, объявления дороже — игнорируются
+  color_filter: null    # пока без фильтра по цвету
+
+sources:
+  - id: rolf-used-mini
+    label: "MINI (б/у) — РОЛЬФ"
+    url: "https://www.rolf.ru/cars/used/mini/"
+    site: rolf
+
+  - id: avtodom-used-countryman-msk
+    label: "MINI Countryman (б/у) — Автодом, Москва"
+    url: "https://avtodom.ru/cars/used/mini/countryman/?city=msk"
+    site: avtodom
+    note: "страница отдаёт карточки через JS — простой HTTP-парсинг может не сработать, нужна проверка/браузер"
+
+  - id: major-expert-used-mini-msk
+    label: "MINI (б/у) — Major Expert, Москва"
+    url: "https://www.major-expert.ru/cars/moscow/mini/"
+    site: major-expert
+
+  - id: autoru-countryman
+    label: "MINI Countryman (б/у) — Авто.ру"
+    url: "https://auto.ru/moskva/cars/mini/countryman/all/"
+    site: autoru
+    note: "агрегатор объявлений (частники + дилеры); поддерживает price_to в URL — можно сразу зашить фильтр по цене в ссылку"
