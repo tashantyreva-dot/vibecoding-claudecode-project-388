@@ -12,13 +12,18 @@ description: >-
 о продаже **MINI Countryman** (б/у) со всех источников, сравнивает с прошлым прогоном
 и уведомляет в Telegram о **новых** и **подешевевших** объявлениях под бюджет.
 
-Данные (конфиг, история прогонов, правила) живут в отдельном GitHub-репозитории
-**`tashantyreva-dot/vibecoding-claudecode-project-388`** и читаются/пишутся через **GitHub REST API**,
+Данные живут в двух GitHub-репозиториях и читаются/пишутся через **GitHub REST API**,
 вызываемый из [`scripts/github-sync.js`](../../../scripts/github-sync.js) (токен — переменная
-окружения `GITHUB_PAT`).
+окружения `GITHUB_PAT`):
 
-> Архив первых прогонов (до переезда) остался в `tashantyreva-dot/tracker-data` — трогать
-> его больше не нужно, все новые прогоны пишутся в `vibecoding-claudecode-project-388`.
+- **`tashantyreva-dot/vibecoding-claudecode-project-388`** (публичный) — реализация: конфиг
+  (`products.yaml`, `notify.yaml`), `KNOWLEDGE.md`, скиллы, код. Он же авто-созданный
+  Hexlet-репозиторий проекта (в нём лежит `.github/workflows/hexlet-check.yml`).
+- **`tashantyreva-dot/tracker-data`** (приватный) — **только** история прогонов
+  (`runs/YYYY-MM-DD.json`), больше ничего.
+
+Публичный репозиторий не должен содержать `runs/*.json` (это результаты выполнения, не
+реализация), а приватный — ничего, кроме json-прогонов.
 
 > GitHub MCP (в т.ч. OAuth-коннектор "claude.ai Github") в headless-режиме не работает —
 > требует согласия через веб-интерфейс claude.ai, которое некому дать без интерактива.
@@ -34,7 +39,7 @@ description: >-
 | Часть | Кто исполняет | Ответственность |
 |-------|---------------|-----------------|
 | **этот SKILL.md** | Claude (headless) | оркестрация: вызывает скрипты ниже голыми командами |
-| [`scripts/github-sync.js`](../../../scripts/github-sync.js) | Node | чтение/запись `vibecoding-claudecode-project-388` через GitHub REST API |
+| [`scripts/github-sync.js`](../../../scripts/github-sync.js) | Node | чтение конфига из `vibecoding-claudecode-project-388` и чтение/запись прогонов в `tracker-data` через GitHub REST API |
 | [`scripts/run-tracker.js`](../../../scripts/run-tracker.js) | Node | обход источников, сборка прогона, diff, вызов доставки |
 | [`scripts/send.py`](../../../scripts/send.py) | Python (stdlib) | отправка готового текста в Telegram |
 
@@ -50,11 +55,14 @@ description: >-
 `Отправлено.` и шлёт сообщение (нужны `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`
 в окружении или в `.env` рядом со скриптом).
 
-## Файлы в `vibecoding-claudecode-project-388`
+## Файлы
 
+В `vibecoding-claudecode-project-388` (реализация):
 - `products.yaml` — источники (`sources[].id`, `.url`) и `search.max_price`.
 - `notify.yaml` — `telegram.chat_id` (секретом не является). **Токен бота там НЕ хранится.**
 - `KNOWLEDGE.md` — правила значимости и формат уведомления.
+
+В `tracker-data` (только результаты):
 - `runs/YYYY-MM-DD.json` — история прогонов (по одному файлу на дату).
 
 ## Секрет
@@ -90,8 +98,8 @@ description: >-
    при значимых изменениях отправит Telegram. Он пишет прогон в `--out` и печатает в
    **stdout** JSON-сводку (`diff`, `telegram`, `run`); ход выполнения — в stderr.
 4. Записать прогон в GitHub: `node scripts/github-sync.js put-run <файл --out из шага 3>`
-   — сам положит его в `runs/<сегодня>.json` и сам разберётся с перезаписью, если файл
-   за сегодня уже есть.
+   — сам положит его в `runs/<сегодня>.json` в `tracker-data` и сам разберётся с
+   перезаписью, если файл за сегодня уже есть.
 5. Если любой из скриптов вышел с кодом 2 — это его собственная ошибка авторизации/токена;
    останови выполнение и выведи в точности то сообщение об ошибке, что он напечатал. Не
    пытайся обойти это curl-ом, MCP или чем-то ещё.

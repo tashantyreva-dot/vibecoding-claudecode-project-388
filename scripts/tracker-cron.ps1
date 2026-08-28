@@ -1,10 +1,10 @@
 ﻿# tracker-cron.ps1 — ежедневный автозапуск трекера цен через Claude Code (headless).
 #
 # Запускается Планировщиком заданий Windows (Task Scheduler) раз в день.
-# Дёргает `claude -p` в headless-режиме: Claude по скиллу tracker читает конфиг и
-# прошлый прогон из репозитория vibecoding-claudecode-project-388 через scripts/github-sync.js, запускает
-# scripts/run-tracker.js (обход источников + diff + Telegram) и пишет новый прогон
-# обратно в GitHub тем же github-sync.js.
+# Дёргает `claude -p` в headless-режиме: Claude по скиллу tracker читает конфиг из
+# репозитория vibecoding-claudecode-project-388 и прошлый прогон из tracker-data через
+# scripts/github-sync.js, запускает scripts/run-tracker.js (обход источников + diff +
+# Telegram) и пишет новый прогон обратно в tracker-data тем же github-sync.js.
 #
 # ВАЖНО про секреты: headless-сессия Claude Code блокирует любую Bash/PowerShell-команду,
 # в тексте которой видна подстановка переменной окружения ($VAR, ${...}, $env:VAR) — это
@@ -67,11 +67,12 @@ GitHub и Telegram уже реализованы в scripts/github-sync.js и sc
    из tashantyreva-dot/vibecoding-claudecode-project-388 во временные файлы, которые ты укажешь. Код выхода 2 =
    GITHUB_PAT не задан/невалиден — в этом случае сразу останови выполнение (см. п.5).
 2) `node scripts/github-sync.js get-prev-run <outFile>` — скачает самый свежий прошлый
-   прогон в outFile и напечатает в stdout его дату; если прошлого прогона нет, напечатает
-   ровно "NONE" и файл не создаст — тогда флаг --prev в шаге 3 не передавай.
+   прогон из tashantyreva-dot/tracker-data в outFile и напечатает в stdout его дату; если
+   прошлого прогона нет, напечатает ровно "NONE" и файл не создаст — тогда флаг --prev в
+   шаге 3 не передавай.
 3) `node scripts/run-tracker.js --products <из шага 1> --notify <из шага 1> --out <новый файл> [--prev <из шага 2, если не NONE>]` — БЕЗ --dry-run. Дождись завершения (обход сайтов занимает несколько минут). При значимых изменениях скрипт сам отправит Telegram (токен читает из process.env сам).
 4) `node scripts/github-sync.js put-run <файл --out из шага 3>` — запишет его в
-   runs/<сегодняшняя дата>.json репозитория vibecoding-claudecode-project-388 (сам разберётся с перезаписью).
+   runs/<сегодняшняя дата>.json репозитория tracker-data (сам разберётся с перезаписью).
 5) Если любой из скриптов вышел с кодом 2 (это его ошибка авторизации/токена) — немедленно
    останови выполнение и выведи в точности то сообщение об ошибке, что он напечатал.
    Не пытайся обойти это другим способом (curl, MCP и т.п.).

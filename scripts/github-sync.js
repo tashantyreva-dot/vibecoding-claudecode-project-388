@@ -1,4 +1,9 @@
-// github-sync.js — чтение/запись файлов tashantyreva-dot/vibecoding-claudecode-project-388 через GitHub REST API.
+// github-sync.js — чтение/запись файлов трекера через GitHub REST API.
+//
+// Реализация (products.yaml, notify.yaml, KNOWLEDGE.md, скиллы) живёт в публичном
+// tashantyreva-dot/vibecoding-claudecode-project-388, а прогоны (runs/*.json) —
+// в приватном tashantyreva-dot/tracker-data. Так публичный репозиторий содержит
+// только реализацию, а приватный — только записи с результатами.
 //
 // Токен читается из process.env.GITHUB_PAT (код, не текст shell-команды) — headless-сессия
 // Claude Code блокирует любую Bash/PowerShell-команду с видимой подстановкой переменной
@@ -7,15 +12,19 @@
 //
 // Команды:
 //   get-config <productsOut> <notifyOut>   — скачать products.yaml и notify.yaml
-//   get-prev-run <outFile>                 — скачать самый свежий runs/*.json старше сегодня;
-//                                             если такого нет, ничего не пишет и печатает NONE
-//   put-run <inFile>                       — записать inFile в runs/<сегодня>.json (с sha, если файл уже есть)
+//                                             из vibecoding-claudecode-project-388
+//   get-prev-run <outFile>                 — скачать самый свежий runs/*.json старше сегодня
+//                                             из tracker-data; если такого нет, ничего не
+//                                             пишет и печатает NONE
+//   put-run <inFile>                       — записать inFile в runs/<сегодня>.json
+//                                             в tracker-data (с sha, если файл уже есть)
 
 const https = require('https');
 const fs = require('fs');
 
 const OWNER = 'tashantyreva-dot';
-const REPO = 'vibecoding-claudecode-project-388';
+const CONFIG_REPO = 'vibecoding-claudecode-project-388';
+const RUNS_REPO = 'tracker-data';
 const BRANCH = 'main';
 const TOKEN = process.env.GITHUB_PAT;
 
@@ -54,8 +63,8 @@ function api(method, path, { raw = false, body = null } = {}) {
   });
 }
 
-function contentsPath(path) {
-  return `/repos/${OWNER}/${REPO}/contents/${path}`;
+function contentsPath(repo, path) {
+  return `/repos/${OWNER}/${repo}/contents/${path}`;
 }
 
 function todayISO() {
@@ -75,7 +84,7 @@ async function getConfig(productsOut, notifyOut) {
     ['products.yaml', productsOut],
     ['notify.yaml', notifyOut],
   ]) {
-    const res = await api('GET', contentsPath(remote), { raw: true });
+    const res = await api('GET', contentsPath(CONFIG_REPO, remote), { raw: true });
     failIfAuthError(res.status, `чтении ${remote}`);
     if (res.status !== 200) {
       console.error(`ОШИБКА: не удалось прочитать ${remote} (HTTP ${res.status}): ${res.text.slice(0, 300)}`);
@@ -87,7 +96,7 @@ async function getConfig(productsOut, notifyOut) {
 }
 
 async function getPrevRun(outFile) {
-  const res = await api('GET', contentsPath('runs'));
+  const res = await api('GET', contentsPath(RUNS_REPO, 'runs'));
   failIfAuthError(res.status, 'листинге runs/');
   if (res.status !== 200) {
     console.error(`ОШИБКА: не удалось прочитать runs/ (HTTP ${res.status}): ${res.text.slice(0, 300)}`);
@@ -106,7 +115,7 @@ async function getPrevRun(outFile) {
     return;
   }
   const latest = dates[dates.length - 1];
-  const fileRes = await api('GET', contentsPath(`runs/${latest}.json`), { raw: true });
+  const fileRes = await api('GET', contentsPath(RUNS_REPO, `runs/${latest}.json`), { raw: true });
   failIfAuthError(fileRes.status, `чтении runs/${latest}.json`);
   if (fileRes.status !== 200) {
     console.error(`ОШИБКА: не удалось скачать runs/${latest}.json (HTTP ${fileRes.status}): ${fileRes.text.slice(0, 300)}`);
@@ -121,7 +130,7 @@ async function putRun(inFile) {
   const remotePath = `runs/${today}.json`;
   const content = fs.readFileSync(inFile);
 
-  const existing = await api('GET', contentsPath(remotePath));
+  const existing = await api('GET', contentsPath(RUNS_REPO, remotePath));
   failIfAuthError(existing.status, `проверке ${remotePath}`);
   let sha;
   if (existing.status === 200) {
@@ -137,7 +146,7 @@ async function putRun(inFile) {
     branch: BRANCH,
     ...(sha ? { sha } : {}),
   };
-  const putRes = await api('PUT', contentsPath(remotePath), { body });
+  const putRes = await api('PUT', contentsPath(RUNS_REPO, remotePath), { body });
   failIfAuthError(putRes.status, `записи ${remotePath}`);
   if (putRes.status !== 200 && putRes.status !== 201) {
     console.error(`ОШИБКА: не удалось записать ${remotePath} (HTTP ${putRes.status}): ${putRes.text.slice(0, 300)}`);
