@@ -1,4 +1,4 @@
-// github-sync.js — чтение/запись файлов tashantyreva-dot/tracker-data через GitHub REST API.
+// github-sync.js — чтение/запись файлов tashantyreva-dot/vibecoding-claudecode-project-388 через GitHub REST API.
 //
 // Токен читается из process.env.GITHUB_PAT (код, не текст shell-команды) — headless-сессия
 // Claude Code блокирует любую Bash/PowerShell-команду с видимой подстановкой переменной
@@ -15,7 +15,7 @@ const https = require('https');
 const fs = require('fs');
 
 const OWNER = 'tashantyreva-dot';
-const REPO = 'tracker-data';
+const REPO = 'vibecoding-claudecode-project-388';
 const BRANCH = 'main';
 const TOKEN = process.env.GITHUB_PAT;
 

@@ -13,9 +13,12 @@ description: >-
 и уведомляет в Telegram о **новых** и **подешевевших** объявлениях под бюджет.
 
 Данные (конфиг, история прогонов, правила) живут в отдельном GitHub-репозитории
-**`tashantyreva-dot/tracker-data`** и читаются/пишутся через **GitHub REST API**, вызываемый
-из [`scripts/github-sync.js`](../../../scripts/github-sync.js) (токен — переменная окружения
-`GITHUB_PAT`).
+**`tashantyreva-dot/vibecoding-claudecode-project-388`** и читаются/пишутся через **GitHub REST API**,
+вызываемый из [`scripts/github-sync.js`](../../../scripts/github-sync.js) (токен — переменная
+окружения `GITHUB_PAT`).
+
+> Архив первых прогонов (до переезда) остался в `tashantyreva-dot/tracker-data` — трогать
+> его больше не нужно, все новые прогоны пишутся в `vibecoding-claudecode-project-388`.
 
 > GitHub MCP (в т.ч. OAuth-коннектор "claude.ai Github") в headless-режиме не работает —
 > требует согласия через веб-интерфейс claude.ai, которое некому дать без интерактива.
@@ -31,7 +34,7 @@ description: >-
 | Часть | Кто исполняет | Ответственность |
 |-------|---------------|-----------------|
 | **этот SKILL.md** | Claude (headless) | оркестрация: вызывает скрипты ниже голыми командами |
-| [`scripts/github-sync.js`](../../../scripts/github-sync.js) | Node | чтение/запись `tracker-data` через GitHub REST API |
+| [`scripts/github-sync.js`](../../../scripts/github-sync.js) | Node | чтение/запись `vibecoding-claudecode-project-388` через GitHub REST API |
 | [`scripts/run-tracker.js`](../../../scripts/run-tracker.js) | Node | обход источников, сборка прогона, diff, вызов доставки |
 | [`scripts/send.py`](../../../scripts/send.py) | Python (stdlib) | отправка готового текста в Telegram |
 
@@ -47,7 +50,7 @@ description: >-
 `Отправлено.` и шлёт сообщение (нужны `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`
 в окружении или в `.env` рядом со скриптом).
 
-## Файлы в `tracker-data`
+## Файлы в `vibecoding-claudecode-project-388`
 
 - `products.yaml` — источники (`sources[].id`, `.url`) и `search.max_price`.
 - `notify.yaml` — `telegram.chat_id` (секретом не является). **Токен бота там НЕ хранится.**
@@ -65,7 +68,8 @@ description: >-
 Все команды ниже — голые, без подстановок переменных окружения в тексте (см. предупреждение выше).
 
 1. Прочитать конфиг: `node scripts/github-sync.js get-config <products.yaml> <notify.yaml>`
-   — скачает оба файла из `tashantyreva-dot/tracker-data` по указанным локальным путям.
+   — скачает оба файла из `tashantyreva-dot/vibecoding-claudecode-project-388` по указанным
+   локальным путям.
    Код выхода 2 = токен GitHub не задан/невалиден — останавливай выполнение (см. п.5).
 2. Найти прошлый прогон: `node scripts/github-sync.js get-prev-run <outFile>` — скачает
    файл с самой поздней датой строго раньше сегодняшней (не обязательно вчерашний — на
