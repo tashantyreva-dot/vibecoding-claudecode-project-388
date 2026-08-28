@@ -10,4 +10,3 @@ prev-run.json
 new-run.json
 # секреты доставки (токен бота, chat_id) — только локально, не в git
 .env
-scripts/.env

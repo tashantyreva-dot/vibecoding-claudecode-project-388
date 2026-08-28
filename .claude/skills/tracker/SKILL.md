@@ -41,7 +41,7 @@ description: >-
 | **этот SKILL.md** | Claude (headless) | оркестрация: вызывает скрипты ниже голыми командами |
 | [`scripts/github-sync.js`](../../../scripts/github-sync.js) | Node | чтение конфига из `vibecoding-claudecode-project-388` и чтение/запись прогонов в `tracker-data` через GitHub REST API |
 | [`scripts/run-tracker.js`](../../../scripts/run-tracker.js) | Node | обход источников, сборка прогона, diff, вызов доставки |
-| [`scripts/send.py`](../../../scripts/send.py) | Python (stdlib) | отправка готового текста в Telegram |
+| [`send.py`](../../../send.py) | Python (stdlib) | отправка готового текста в Telegram |
 
 `run-tracker.js` работает с **локальными файлами**: Claude вызывает `github-sync.js`, чтобы
 выкачать конфиг и прошлый прогон во временные файлы, запускает `run-tracker.js`, затем

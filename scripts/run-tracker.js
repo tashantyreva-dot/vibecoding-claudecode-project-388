@@ -30,7 +30,7 @@
  *     --out      <куда-записать-новый-прогон.json> \
  *     [--date YYYY-MM-DD]      (по умолчанию — сегодня)
  *     [--extract scripts/extract.js]
- *     [--send scripts/send.py]  (скрипт доставки в Telegram)
+ *     [--send send.py]         (скрипт доставки в Telegram)
  *     [--dry-run]              (посчитать и собрать сообщение, но НЕ слать Telegram)
  *
  * В stdout печатается JSON-сводка (diff + результат Telegram + путь к прогону) —
@@ -493,7 +493,7 @@ async function main() {
     }
     if (notify.chat_id == null) die(1, 'в notify.yaml нет telegram.chat_id');
 
-    const sendScript = args.send || path.join(__dirname, 'send.py');
+    const sendScript = args.send || path.join(__dirname, '..', 'send.py');
     if (!fs.existsSync(sendScript)) die(1, `не найден send.py: ${sendScript}`);
 
     try {
