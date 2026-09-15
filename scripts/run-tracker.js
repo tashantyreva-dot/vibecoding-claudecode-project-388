@@ -5,7 +5,7 @@
  * run-tracker.js — оркестратор трекера цен поверх готового extract-price.
  *
  * Что делает:
- *   1. Читает products.yaml (источники, max_price) и notify.yaml (chat_id).
+ *   1. Читает products.yaml (источники, max_price); chat_id и токен бота — из окружения.
  *   2. Для каждого источника вызывает `node scripts/extract.js <url>` и собирает
  *      объявления. Сохраняет status: "ok" / "error" по источнику (по коду выхода
  *      extract.js), чтобы упавший источник не выглядел как «всё пропало».
@@ -25,7 +25,6 @@
  * Запуск (пути — локальные файлы, которые скилл заранее выкачал через GitHub MCP):
  *   node scripts/run-tracker.js \
  *     --products <products.yaml> \
- *     --notify   <notify.yaml> \
  *     --prev     <прошлый-прогон.json | ""> \
  *     --out      <куда-записать-новый-прогон.json> \
  *     [--date YYYY-MM-DD]      (по умолчанию — сегодня)
@@ -40,7 +39,7 @@
  * Коды выхода:
  *   0  — прогон отработал (в т.ч. когда часть источников упала — это не фатально);
  *   1  — фатальная ошибка вызова/конфига (нет аргументов, битый products.yaml);
- *   2  — нужно было отправить Telegram, но TELEGRAM_BOT_TOKEN не задан / ошибка сети.
+ *   2  — нужно было отправить Telegram, но TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не заданы / ошибка сети.
  */
 
 const fs = require('fs');
@@ -55,7 +54,6 @@ function parseArgs(argv) {
     const a = argv[i];
     switch (a) {
       case '--products': args.products = argv[++i]; break;
-      case '--notify': args.notify = argv[++i]; break;
       case '--prev': args.prev = argv[++i]; break;
       case '--out': args.out = argv[++i]; break;
       case '--date': args.date = argv[++i]; break;
@@ -80,8 +78,8 @@ function log(message) {
 
 // ───────────────────── минимальный YAML под наши файлы ─────────────────────
 // Полноценный YAML нам не нужен: products.yaml — это map с ключами search/sources,
-// где sources — список map'ов; notify.yaml — map telegram.chat_id. Парсим ровно
-// это, игнорируя комментарии и пустые строки. Значения — строки/числа/null.
+// где sources — список map'ов. Парсим ровно это, игнорируя комментарии и пустые
+// строки. Значения — строки/числа/null.
 
 function stripComment(line) {
   // убираем хвостовой комментарий, не трогая '#' внутри кавычек
@@ -156,18 +154,6 @@ function parseProducts(text) {
     }
   }
   return result;
-}
-
-/** Разбирает notify.yaml → { chat_id }. */
-function parseNotify(text) {
-  const lines = text.split(/\r?\n/);
-  const out = {};
-  for (const rawLine of lines) {
-    const line = stripComment(rawLine);
-    const m = line.match(/^\s*chat_id:\s*(.+?)\s*$/);
-    if (m) out.chat_id = coerce(m[1]);
-  }
-  return out;
 }
 
 // ───────────────────────── вызов extract-price ─────────────────────────
@@ -300,12 +286,12 @@ function sourceName(url) {
 function fmtNum(n) {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '?';
   // разряды разделяем неразрывным пробелом: «1 100 000»
-  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
 /** «1 100 000 ₽, 2012 г., 142 632 км» — части с null опускаются. */
 function fmtMeta(listing) {
-  const parts = [`${fmtNum(listing.price)} ₽`];
+  const parts = [`${fmtNum(listing.price)} ₽`];
   if (typeof listing.year === 'number') parts.push(`${listing.year} г.`);
   if (typeof listing.mileage === 'number') parts.push(`${fmtNum(listing.mileage)} км`);
   return parts.join(', ');
@@ -335,7 +321,7 @@ function buildMessage(diff, date) {
   }
   for (const c of drops) {
     lines.push(
-      `📉 ${sourceName(c.url)} — ${fmtNum(c.listing.price)} ₽ (было ${fmtNum(c.oldPrice)} ₽)` +
+      `📉 ${sourceName(c.url)} — ${fmtNum(c.listing.price)} ₽ (было ${fmtNum(c.oldPrice)} ₽)` +
         `${typeof c.listing.year === 'number' ? `, ${c.listing.year} г.` : ''}` +
         `${typeof c.listing.mileage === 'number' ? `, ${fmtNum(c.listing.mileage)} км` : ''}`
     );
@@ -354,9 +340,9 @@ function formatDateRu(iso) {
 
 // ───────────────────────────── Telegram ─────────────────────────────
 // Доставка вынесена в отдельный Python-скрипт send.py (только stdlib): tracker
-// не дублирует HTTP-логику, а вызывает `python send.py <текст>`. chat_id берём
-// из notify.yaml и передаём через окружение (TELEGRAM_CHAT_ID); токен —
-// TELEGRAM_BOT_TOKEN — наследуется из окружения процесса.
+// не дублирует HTTP-логику, а вызывает `python send.py <текст>`. И chat_id
+// (TELEGRAM_CHAT_ID), и токен бота (TELEGRAM_BOT_TOKEN) наследуются из
+// окружения процесса — send.py сам их прочитает (либо из .env рядом с собой).
 
 /** Находит доступный интерпретатор Python. Возвращает имя или null. */
 function findPython() {
@@ -371,9 +357,9 @@ function findPython() {
 
 /**
  * Отправляет текст через send.py. Бросает Error с понятным текстом, если Python
- * не найден или send.py завершился ненулевым кодом (нет токена/сети/Telegram отклонил).
+ * не найден или send.py завершился ненулевым кодом (нет токена/chat_id/сети/Telegram отклонил).
  */
-function sendViaSendPy(sendScript, chatId, text) {
+function sendViaSendPy(sendScript, text) {
   const py = findPython();
   if (!py) {
     throw new Error('не найден интерпретатор Python (python/py/python3) для запуска send.py');
@@ -381,7 +367,6 @@ function sendViaSendPy(sendScript, chatId, text) {
   const r = spawnSync(py, [sendScript, text], {
     encoding: 'utf8',
     timeout: 60000,
-    env: { ...process.env, TELEGRAM_CHAT_ID: String(chatId) },
   });
   if (r.error) {
     throw new Error(`не удалось запустить send.py: ${r.error.message}`);
@@ -485,21 +470,20 @@ async function main() {
       die(2, 'TELEGRAM_BOT_TOKEN не задан — есть значимые изменения, но отправить в Telegram нечем. ' +
         'Задайте переменную окружения TELEGRAM_BOT_TOKEN и повторите запуск.');
     }
-    let notify;
-    try {
-      notify = parseNotify(fs.readFileSync(args.notify, 'utf8'));
-    } catch (e) {
-      die(1, `не удалось прочитать notify.yaml: ${e.message}`);
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!chatId || chatId.trim() === '') {
+      process.stdout.write(JSON.stringify({ date, runPath: args.out, run, diff, telegram }, null, 2) + '\n');
+      die(2, 'TELEGRAM_CHAT_ID не задан — есть значимые изменения, но отправить в Telegram нечем. ' +
+        'Задайте переменную окружения TELEGRAM_CHAT_ID и повторите запуск.');
     }
-    if (notify.chat_id == null) die(1, 'в notify.yaml нет telegram.chat_id');
 
     const sendScript = args.send || path.join(__dirname, '..', 'send.py');
     if (!fs.existsSync(sendScript)) die(1, `не найден send.py: ${sendScript}`);
 
     try {
-      const out = sendViaSendPy(sendScript, notify.chat_id, message);
+      const out = sendViaSendPy(sendScript, message);
       telegram.sent = true;
-      log(`Telegram (send.py): ${out || 'отправлено'} → chat_id ${notify.chat_id}.`);
+      log(`Telegram (send.py): ${out || 'отправлено'} → chat_id ${chatId}.`);
     } catch (e) {
       process.stdout.write(JSON.stringify({ date, runPath: args.out, run, diff, telegram }, null, 2) + '\n');
       die(2, e.message);
