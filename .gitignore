@@ -6,7 +6,6 @@ __pycache__/
 logs/
 # временные локальные копии, которые github-sync.js/headless-агент скачивает из tracker-data
 products.yaml
-notify.yaml
 prev-run.json
 new-run.json
 # секреты доставки (токен бота, chat_id) — только локально, не в git
