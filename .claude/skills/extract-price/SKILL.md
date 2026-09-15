@@ -11,13 +11,14 @@ description: >-
 Извлекает объявления о продаже **MINI Countryman** (б/у) со страницы источника,
 фильтрует по цене `< 1 200 000 ₽` и возвращает JSON-массив.
 
-Реализация — Node.js + Playwright (headless-браузер), скрипт
-[`scripts/extract.js`](../../../scripts/extract.js).
+Реализация — Node.js + Playwright (headless-браузер), скрипт [`extract.js`](./extract.js)
+(лежит рядом с этим файлом, а не в общей папке `scripts/`, — это вспомогательный
+скрипт именно для этого скилла).
 
 ## Как запускать
 
 ```bash
-node scripts/extract.js <URL>
+node .claude/skills/extract-price/extract.js <URL>
 ```
 
 Скрипт печатает в **stdout** JSON-массив объявлений:

@@ -5,7 +5,7 @@
   "description": "Трекер цен на б/у авто (MINI Cooper Countryman) с обходом источников через Playwright.",
   "type": "commonjs",
   "scripts": {
-    "extract": "node scripts/extract.js"
+    "extract": "node .claude/skills/extract-price/extract.js"
   },
   "dependencies": {
     "playwright": "^1.62.1"

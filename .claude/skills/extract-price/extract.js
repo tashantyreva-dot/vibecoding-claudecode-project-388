@@ -4,7 +4,7 @@
 /*
  * extract.js — извлекает объявления о продаже MINI Countryman со страницы источника.
  *
- * Запуск:   node scripts/extract.js <URL>
+ * Запуск:   node .claude/skills/extract-price/extract.js <URL>
  * Вывод:    JSON-массив в stdout, например
  *           [{ "price": 1100000, "year": 2012, "mileage": 142632, "url": "https://..." }]
  *
@@ -140,7 +140,7 @@ const SITES = [
           const text = card.innerText || '';
           const kmIdx = text.search(/км/);
           const after = kmIdx >= 0 ? text.slice(kmIdx) : text;
-          const pm = after.match(/([0-9][0-9\s  ]*[0-9]|[0-9])\s*₽/);
+          const pm = after.match(/([0-9][0-9\s  ]*[0-9]|[0-9])\s*₽/);
           out.push({
             url: a.href,
             priceText: pm ? pm[1] : '',
@@ -187,7 +187,7 @@ function pickSite(url) {
 
 // Разделители внутри числа — пробел и его неразрывные варианты, НО НЕ перевод
 // строки (иначе год и пробег, стоящие на соседних строках, склеятся в одно число).
-const INNUM_SPACE = /(\d)[\u0020\u00a0\u202f\u2009\u2007\u2008\u2002\u2003](?=\d)/g;
+const INNUM_SPACE = /(\d)[        ](?=\d)/g;
 
 /** «1 295 000 ₽» / «от 5 397 000 руб.» / «2 600 000 ₽ 2 550 000 ₽» -> число. */
 function parsePrice(text) {
@@ -244,7 +244,7 @@ async function launchBrowser() {
 async function main() {
   const url = process.argv[2];
   if (!url) {
-    fail(1, 'Использование: node scripts/extract.js <URL>');
+    fail(1, 'Использование: node .claude/skills/extract-price/extract.js <URL>');
   }
   try {
     // eslint-disable-next-line no-new
