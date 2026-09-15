@@ -1,6 +1,6 @@
 // github-sync.js — чтение/запись файлов трекера через GitHub REST API.
 //
-// Реализация (products.yaml, notify.yaml, KNOWLEDGE.md, скиллы) живёт в публичном
+// Реализация (products.yaml, KNOWLEDGE.md, скиллы) живёт в публичном
 // tashantyreva-dot/vibecoding-claudecode-project-388, а прогоны (runs/*.json) —
 // в приватном tashantyreva-dot/tracker-data. Так публичный репозиторий содержит
 // только реализацию, а приватный — только записи с результатами.
@@ -8,10 +8,10 @@
 // Токен читается из process.env.GITHUB_PAT (код, не текст shell-команды) — headless-сессия
 // Claude Code блокирует любую Bash/PowerShell-команду с видимой подстановкой переменной
 // окружения ($VAR, ${...}, $env:VAR) как потенциальный доступ к секрету. Вызов вида
-// `node scripts/github-sync.js get-config a.yaml b.yaml` такой подстановки не содержит.
+// `node scripts/github-sync.js get-config a.yaml` такой подстановки не содержит.
 //
 // Команды:
-//   get-config <productsOut> <notifyOut>   — скачать products.yaml и notify.yaml
+//   get-config <productsOut>               — скачать products.yaml
 //                                             из vibecoding-claudecode-project-388
 //   get-prev-run <outFile>                 — скачать самый свежий runs/*.json старше сегодня
 //                                             из tracker-data; если такого нет, ничего не
@@ -79,19 +79,14 @@ function failIfAuthError(status, context) {
   }
 }
 
-async function getConfig(productsOut, notifyOut) {
-  for (const [remote, local] of [
-    ['products.yaml', productsOut],
-    ['notify.yaml', notifyOut],
-  ]) {
-    const res = await api('GET', contentsPath(CONFIG_REPO, remote), { raw: true });
-    failIfAuthError(res.status, `чтении ${remote}`);
-    if (res.status !== 200) {
-      console.error(`ОШИБКА: не удалось прочитать ${remote} (HTTP ${res.status}): ${res.text.slice(0, 300)}`);
-      process.exit(1);
-    }
-    fs.writeFileSync(local, res.text, 'utf8');
+async function getConfig(productsOut) {
+  const res = await api('GET', contentsPath(CONFIG_REPO, 'products.yaml'), { raw: true });
+  failIfAuthError(res.status, 'чтении products.yaml');
+  if (res.status !== 200) {
+    console.error(`ОШИБКА: не удалось прочитать products.yaml (HTTP ${res.status}): ${res.text.slice(0, 300)}`);
+    process.exit(1);
   }
+  fs.writeFileSync(productsOut, res.text, 'utf8');
   console.log('OK: конфиг скачан.');
 }
 
@@ -157,14 +152,14 @@ async function putRun(inFile) {
 
 async function main() {
   const [, , cmd, ...args] = process.argv;
-  if (cmd === 'get-config' && args.length === 2) {
-    await getConfig(args[0], args[1]);
+  if (cmd === 'get-config' && args.length === 1) {
+    await getConfig(args[0]);
   } else if (cmd === 'get-prev-run' && args.length === 1) {
     await getPrevRun(args[0]);
   } else if (cmd === 'put-run' && args.length === 1) {
     await putRun(args[0]);
   } else {
-    console.error('Использование: node github-sync.js get-config <products.yaml> <notify.yaml>');
+    console.error('Использование: node github-sync.js get-config <products.yaml>');
     console.error('           или: node github-sync.js get-prev-run <outFile>');
     console.error('           или: node github-sync.js put-run <inFile>');
     process.exit(1);

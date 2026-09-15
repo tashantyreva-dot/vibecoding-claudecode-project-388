@@ -17,7 +17,7 @@ description: >-
 окружения `GITHUB_PAT`):
 
 - **`tashantyreva-dot/vibecoding-claudecode-project-388`** (публичный) — реализация: конфиг
-  (`products.yaml`, `notify.yaml`), `KNOWLEDGE.md`, скиллы, код. Он же авто-созданный
+  (`products.yaml`), `KNOWLEDGE.md`, скиллы, код. Он же авто-созданный
   Hexlet-репозиторий проекта (в нём лежит `.github/workflows/hexlet-check.yml`).
 - **`tashantyreva-dot/tracker-data`** (приватный) — **только** история прогонов
   (`runs/YYYY-MM-DD.json`), больше ничего.
@@ -32,7 +32,7 @@ description: >-
 > окружения ($VAR, ${...}, $env:VAR), это защита от утечки секретов и её не обходит
 > --dangerously-skip-permissions. Поэтому токен читается изнутри `github-sync.js`
 > (`process.env.GITHUB_PAT` в коде, не в тексте команды), а Claude вызывает его голыми
-> командами вида `node scripts/github-sync.js get-config a.yaml b.yaml`.
+> командами вида `node scripts/github-sync.js get-config a.yaml`.
 
 ## Устройство
 
@@ -49,8 +49,8 @@ description: >-
 
 Доставка вынесена в отдельный `send.py` (только стандартная библиотека, `urllib`):
 `run-tracker.js` не дублирует HTTP-логику, а вызывает `python send.py "<текст сводки>"`.
-`chat_id` берётся из `notify.yaml` и передаётся в `send.py` через переменную окружения
-`TELEGRAM_CHAT_ID`; токен — `TELEGRAM_BOT_TOKEN` — наследуется из окружения.
+И `chat_id` (`TELEGRAM_CHAT_ID`), и токен бота (`TELEGRAM_BOT_TOKEN`) наследуются из
+окружения процесса — ни то, ни другое в репозитории не хранится.
 `send.py` можно тестировать отдельно: `python send.py "тест"` → в ответ печатает
 `Отправлено.` и шлёт сообщение (нужны `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`
 в окружении или в `.env` рядом со скриптом).
@@ -59,7 +59,6 @@ description: >-
 
 В `vibecoding-claudecode-project-388` (реализация):
 - `products.yaml` — источники (`sources[].id`, `.url`) и `search.max_price`.
-- `notify.yaml` — `telegram.chat_id` (секретом не является). **Токен бота там НЕ хранится.**
 - `KNOWLEDGE.md` — правила значимости и формат уведомления.
 
 В `tracker-data` (только результаты):
@@ -67,29 +66,30 @@ description: >-
 
 ## Секрет
 
-Токен Telegram-бота читается **только** из переменной окружения `TELEGRAM_BOT_TOKEN`
-и никогда не хранится в репозитории и не хардкодится. Если есть значимые изменения,
-но токен не задан, `run-tracker.js` **явно падает** (код выхода `2`), а не молчит.
+Токен Telegram-бота читается **только** из переменной окружения `TELEGRAM_BOT_TOKEN`,
+а `chat_id` — из `TELEGRAM_CHAT_ID`; ни то, ни другое никогда не хранится в репозитории
+и не хардкодится. Если есть значимые изменения, но токен или chat_id не заданы,
+`run-tracker.js` **явно падает** (код выхода `2`), а не молчит.
 
 ## Порядок работы (что делает Claude при запуске)
 
 Все команды ниже — голые, без подстановок переменных окружения в тексте (см. предупреждение выше).
 
-1. Прочитать конфиг: `node scripts/github-sync.js get-config <products.yaml> <notify.yaml>`
-   — скачает оба файла из `tashantyreva-dot/vibecoding-claudecode-project-388` по указанным
-   локальным путям.
+1. Прочитать конфиг: `node scripts/github-sync.js get-config <products.yaml>`
+   — скачает `products.yaml` из `tashantyreva-dot/vibecoding-claudecode-project-388` по
+   указанному локальному пути.
    Код выхода 2 = токен GitHub не задан/невалиден — останавливай выполнение (см. п.5).
 2. Найти прошлый прогон: `node scripts/github-sync.js get-prev-run <outFile>` — скачает
    файл с самой поздней датой строго раньше сегодняшней (не обязательно вчерашний — на
    случай пропущенных запусков) в outFile и напечатает его дату в stdout. Если прошлого
    прогона нет, напечатает ровно NONE и файл не создаст — тогда флаг --prev в шаге 3
    не передавай (прогон первый в истории).
-3. **Запустить оркестратор** (переменная `TELEGRAM_BOT_TOKEN` должна быть в окружении):
+3. **Запустить оркестратор** (переменные `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`
+   должны быть в окружении):
 
    ```bash
    node scripts/run-tracker.js \
      --products <локальный products.yaml> \
-     --notify   <локальный notify.yaml> \
      --prev     <локальный прошлый-прогон.json | ""> \
      --out      <локальный новый-прогон.json>
    ```
@@ -180,7 +180,7 @@ description: >-
 |-----|----------|
 | 0 | прогон отработал (в т.ч. если часть источников упала — это не фатально) |
 | 1 | фатальная ошибка вызова/конфига (нет аргументов, битый `products.yaml`) |
-| 2 | нужно было отправить Telegram, но `TELEGRAM_BOT_TOKEN` не задан / ошибка сети |
+| 2 | нужно было отправить Telegram, но `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` не заданы / ошибка сети |
 
 Падение отдельного источника (капча/таймаут/смена вёрстки) — **не** фатально: источник
 получает `status: "error"`, прогон продолжается, а `extract-price` не выдаёт пустой
